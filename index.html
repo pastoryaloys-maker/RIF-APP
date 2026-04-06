@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RIF PRO v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root {
+  --bg: #050d1a;
+  --surface: #0c1628;
+  --card: #111f35;
+  --card2: #162540;
+  --border: rgba(255,255,255,0.07);
+  
+  /* Dynamic Theme Variables (Default: Teal) */
+  --teal: #00c9a7;
+  --blue: #3d9aff;
+  --amber: #ffb347;
+  --red: #ff5757;
+  --purple: #a78bfa;
+  --success: #10d48e;
+  
+  --text: #e8f0ff;
+  --muted: #4e6a8a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+  transition: background-color 0.3s;
+}
+/* Dynamic Background based on theme */
+body::before {
+  content: '';
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 10%, var(--teal-dim, rgba(0,201,167,0.09)) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 85%, var(--blue-dim, rgba(61,154,255,0.07)) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+  transition: background 0.5s ease;
+}
+
+/* ── Font Scaling Overrides ── */
+body.fs-large { font-size: 17px; }
+body.fs-large .logo { font-size: 22px; }
+body.fs-large .nav-btn { padding: 20px 15px; }
+body.fs-large .nav-btn .btn-icon { font-size: 30px; margin-bottom: 11px; }
+body.fs-large .nav-btn .btn-label { font-size: 16px; }
+body.fs-large .nav-btn .btn-sub { font-size: 13px; }
+body.fs-large .section-title { font-size: 23px; }
+body.fs-large .card { padding: 16px; }
+body.fs-large .card-title { font-size: 17px; }
+body.fs-large input, body.fs-large select, body.fs-large textarea { padding: 14px; font-size: 16px; }
+body.fs-large .btn { padding: 15px; font-size: 16px; }
+body.fs-large .greeting h1 { font-size: 28px; }
+
+/* ── Themes ── */
+/* Default (Teal) - Defined in :root */
+/* Pro Blue */
+body.theme-blue {
+  --teal: #3b82f6; /* Primary becomes Blue */
+  --blue: #818cf8;  /* Secondary becomes Indigo */
+  --teal-dim: rgba(59, 130, 246, 0.09);
+  --blue-dim: rgba(129, 140, 248, 0.07);
+}
+/* Pro Yellow */
+body.theme-yellow {
+  --teal: #fbbf24; /* Primary becomes Amber/Gold */
+  --blue: #f59e0b;  /* Secondary becomes Darker Amber */
+  --teal-dim: rgba(251, 191, 36, 0.09);
+  --blue-dim: rgba(245, 158, 11, 0.07);
+}
+
+/* ── UI Components ── */
+header {
+  background: rgba(5,13,26,0.96);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo {
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 19px; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--teal), var(--blue));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.header-chips { display: flex; gap: 6px; }
+.alert-chip {
+  background: rgba(255,87,87,0.2); border: 1px solid rgba(255,87,87,0.4);
+  color: #ff8080; font-size: 10px; font-weight: 600;
+  padding: 3px 9px; border-radius: 20px;
+  display: none; align-items: center; gap: 3px;
+  animation: pulse 2s infinite;
+}
+.alert-chip.vis { display: flex; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+.section { padding: 18px 16px; position: relative; z-index: 1; display: none; }
+.section.active { display: block; animation: fadeIn 0.22s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── HOME ── */
+.greeting { margin-bottom: 22px; }
+.greeting h1 { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; line-height:1.25; }
+.greeting p { color:var(--muted); font-size:12px; margin-top:5px; }
+.alert-banner {
+  background: linear-gradient(135deg, rgba(255,87,87,0.1), rgba(255,179,71,0.08));
+  border: 1px solid rgba(255,87,87,0.25);
+  border-radius: 14px; padding: 13px 15px; margin-bottom: 18px; display: none;
+}
+.alert-banner.vis { display: block; }
+.alert-banner-title { font-weight:600; font-size:12px; color:var(--amber); margin-bottom:6px; }
+.alert-banner-item { font-size:12px; color:#b0bdd4; padding:2px 0; }
+.nav-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+.nav-btn {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 18px; padding: 18px 15px;
+  color: var(--text); font-family:'DM Sans',sans-serif;
+  font-size:14px; font-weight:500; cursor:pointer;
+  text-align:left; transition:transform 0.15s, border-color 0.2s;
+  position:relative; overflow:hidden;
+}
+.nav-btn:active { transform: scale(0.97); }
+.nav-btn .btn-icon { font-size:26px; display:block; margin-bottom:9px; }
+.nav-btn .btn-label { font-weight:700; font-size:14px; }
+.nav-btn .btn-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.nav-btn .badge {
+  position:absolute; top:11px; right:11px;
+  background:var(--red); color:#fff;
+  font-size:10px; font-weight:700;
+  width:19px; height:19px; border-radius:50%;
+  display:none; align-items:center; justify-content:center;
+}
+.nav-btn .badge.show { display:flex; }
+.nav-btn.c-teal { border-color:rgba(0,201,167,0.25); }
+.nav-btn.c-blue { border-color:rgba(61,154,255,0.25); }
+.nav-btn.c-amber { border-color:rgba(255,179,71,0.25); }
+.nav-btn.c-purple { border-color:rgba(167,139,250,0.25); }
+.nav-btn.c-gray { border-color:rgba(255,255,255,0.15); }
+.nav-btn.c-report {
+  grid-column: span 2;
+  background: linear-gradient(135deg, rgba(0,201,167,0.1), rgba(61,154,255,0.1));
+  border-color: rgba(0,201,167,0.35);
+  display:flex; align-items:center; gap:14px; padding:16px 18px;
+}
+.nav-btn.c-report .btn-icon { font-size:22px; margin:0; }
+
+/* ── FORMS ── */
+.section-header { display:flex; align-items:center; gap:11px; margin-bottom:20px; }
+.back-btn {
+  background:var(--card); border:1px solid var(--border);
+  color:var(--text); width:35px; height:35px; border-radius:10px;
+  cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.section-title { font-family:'Syne',sans-serif; font-size:20px; font-weight:700; }
+.field-group { margin-bottom:11px; }
+.field-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:5px; }
+input, textarea, select {
+  width:100%; background:var(--card); border:1px solid var(--border);
+  border-radius:11px; padding:11px 13px; color:var(--text);
+  font-family:'DM Sans',sans-serif; font-size:14px; outline:none;
+  transition:border-color 0.2s; -webkit-appearance:none;
+}
+input:focus, textarea:focus, select:focus { border-color:var(--teal); }
+select option { background:var(--card); }
+textarea { min-height:75px; resize:vertical; }
+input[type="file"] { padding:9px; font-size:12px; color:var(--muted); }
+.btn-row { display:flex; gap:9px; margin-top:5px; }
+.btn {
+  flex:1; padding:13px; border-radius:12px; border:none;
+  font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600;
+  cursor:pointer; transition:transform 0.15s, opacity 0.2s;
+}
+.btn:active { transform:scale(0.97); }
+.btn:disabled { opacity:0.6; cursor:not-allowed; }
+.btn-primary { background:linear-gradient(135deg,var(--teal),#00a88a); color:#000; }
+.btn-blue { background:linear-gradient(135deg,var(--blue),#2a7ae6); color:#fff; }
+.btn-ghost { background:var(--card); border:1px solid var(--border); color:var(--text); }
+.btn-red { background:linear-gradient(135deg,var(--red),#cc3030); color:#fff; }
+.btn-purple { background:linear-gradient(135deg,var(--purple),#8b5cf6); color:#fff; }
+
+/* ── CARDS ── */
+.card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:15px; padding:13px 15px; margin-bottom:10px;
+}
+.card-title { font-weight:600; font-size:15px; margin-bottom:3px; }
+.card-meta { font-size:11px; color:var(--muted); }
+.card-actions { margin-top:9px; display:flex; gap:7px; flex-wrap:wrap; }
+.tag { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600; }
+.t-teal { background:rgba(0,201,167,0.14); color:var(--teal); }
+.t-amber { background:rgba(255,179,71,0.14); color:var(--amber); }
+.t-red { background:rgba(255,87,87,0.14); color:var(--red); }
+.t-blue { background:rgba(61,154,255,0.14); color:var(--blue); }
+.t-purple { background:rgba(167,139,250,0.14); color:var(--purple); }
+.t-green { background:rgba(16,212,142,0.14); color:var(--success); }
+.badge-done { font-size:11px; color:var(--success); background:rgba(16,212,142,0.1); padding:2px 8px; border-radius:6px; font-weight:600; }
+.badge-pend { font-size:11px; color:var(--amber); background:rgba(255,179,71,0.1); padding:2px 8px; border-radius:6px; font-weight:600; }
+.img-preview { width:100%; border-radius:10px; margin-top:10px; }
+.btn-sm {
+  padding:5px 11px; border-radius:7px; border:none;
+  font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;
+  transition:opacity 0.15s;
+}
+.btn-sm:active { opacity:0.7; }
+.divider {
+  font-family:'Syne',sans-serif; font-size:11px; font-weight:700;
+  color:var(--muted); text-transform:uppercase; letter-spacing:1px;
+  margin:18px 0 11px; display:flex; align-items:center; gap:8px;
+}
+.divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── REPORT ── */
+.filter-tabs {
+  display:flex; background:var(--card); border-radius:13px;
+  padding:4px; margin-bottom:18px; border:1px solid var(--border);
+}
+.filter-tab {
+  flex:1; padding:8px 4px; border-radius:9px; border:none;
+  background:transparent; color:var(--muted);
+  font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600;
+  cursor:pointer; transition:all 0.2s;
+}
+.filter-tab.active { background:var(--card2); color:var(--teal); }
+.summary-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-bottom:18px; }
+.sum-card { background:var(--card); border:1px solid var(--border); border-radius:13px; padding:13px 11px; text-align:center; }
+.sum-card .s-lbl { font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; }
+.sum-card .s-val { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; line-height:1; }
+.sum-card.s-in { border-color:rgba(16,212,142,0.3); } .sum-card.s-in .s-val { color:var(--success); }
+.sum-card.s-ex { border-color:rgba(255,87,87,0.3); } .sum-card.s-ex .s-val { color:var(--red); }
+.sum-card.s-db { border-color:rgba(255,179,71,0.3); } .sum-card.s-db .s-val { color:var(--amber); }
+.chart-box {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:15px; padding:15px; margin-bottom:14px;
+}
+.chart-lbl { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+canvas { max-height:210px; }
+.insight-box {
+  background:linear-gradient(135deg,rgba(167,139,250,0.07),rgba(61,154,255,0.07));
+  border:1px solid rgba(167,139,250,0.18);
+  border-radius:15px; padding:15px; margin-bottom:14px; min-height:56px;
+}
+.insight-item { padding:8px 0; font-size:13px; border-bottom:1px solid var(--border); line-height:1.55; }
+.insight-item:last-child { border-bottom:none; }
+.empty-state { text-align:center; padding:22px; color:var(--muted); font-size:13px; }
+.empty-state .ei { font-size:28px; margin-bottom:7px; }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ── NETWORK PILL ── */
+.net-pill {
+  display:flex; align-items:center; gap:5px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:20px; padding:4px 10px 4px 8px;
+  font-size:11px; font-weight:600; cursor:pointer;
+  transition:all 0.25s; user-select:none; flex-shrink:0;
+}
+.net-pill:active { transform:scale(0.94); }
+.net-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:var(--success); flex-shrink:0;
+  transition:background 0.4s, box-shadow 0.4s;
+}
+.net-dot.live { animation:livepulse 2.2s ease-in-out infinite; }
+.net-dot.dead { background:#3a4f66; box-shadow:none !important; }
+.net-dot.forced { background:var(--amber); animation:none; box-shadow:0 0 0 2px rgba(255,179,71,0.25) !important; }
+@keyframes livepulse {
+  0%,100%{ box-shadow:0 0 0 2px rgba(16,212,142,0.3); }
+  50%    { box-shadow:0 0 0 5px rgba(16,212,142,0.08); }
+}
+
+/* ── TOAST ── */
+.toast {
+  position:fixed; bottom:26px; left:50%;
+  transform:translateX(-50%) translateY(70px);
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:28px; padding:10px 20px;
+  font-size:13px; font-weight:500; color:var(--text);
+  z-index:9999; opacity:0; white-space:nowrap; max-width:88vw;
+  box-shadow:0 10px 36px rgba(0,0,0,0.5);
+  transition:transform 0.38s cubic-bezier(0.34,1.45,0.64,1), opacity 0.3s;
+  pointer-events:none;
+}
+.toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+.toast.t-success { border-color:rgba(16,212,142,0.45); color:var(--success); }
+.toast.t-warning { border-color:rgba(255,179,71,0.45); color:var(--amber); }
+.toast.t-info    { border-color:rgba(61,154,255,0.4);  color:var(--blue); }
+.toast.t-error   { border-color:rgba(255,87,87,0.4);   color:var(--red); }
+
+/* ── OFFLINE BANNER (report) ── */
+.offline-info {
+  background:linear-gradient(135deg,rgba(78,106,138,0.1),rgba(78,106,138,0.05));
+  border:1px solid rgba(78,106,138,0.22);
+  border-radius:13px; padding:12px 15px; margin-bottom:16px;
+  display:none; gap:11px; align-items:flex-start;
+}
+.offline-info.vis { display:flex; }
+.offline-info-body { font-size:12px; color:#7a9ab8; line-height:1.55; }
+.offline-info-body strong { color:var(--text); font-size:13px; display:block; margin-bottom:2px; }
+
+/* ── CONNECTIVITY STATUS BAR (full-width, all sections) ── */
+.net-bar {
+  display:none; align-items:center; justify-content:center; gap:7px;
+  padding:7px 16px; font-size:12px; font-weight:600;
+  border-bottom:1px solid var(--border);
+  position:sticky; top:57px; z-index:99;
+  backdrop-filter:blur(12px);
+}
+.net-bar.vis { display:flex; }
+.net-bar.nb-offline { background:rgba(78,106,138,0.18); color:#8aa8c8; }
+.net-bar.nb-forced  { background:rgba(255,179,71,0.1);  color:var(--amber); }
+
+/* ── CACHE LABEL ── */
+.cache-lbl {
+  font-size:10px; color:var(--muted); text-transform:uppercase;
+  letter-spacing:0.9px; margin-bottom:9px; display:flex; align-items:center; gap:5px;
+}
+
+/* ── SETTINGS UI ── */
+.settings-group {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 15px; padding: 5px 0; margin-bottom: 16px;
+}
+.settings-item {
+  padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.settings-item:last-child { border-bottom: none; }
+.si-label { font-size:14px; font-weight:500; color:var(--text); }
+.si-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+.si-action { display:flex; gap:8px; align-items:center; }
+/* Radio/Color Options */
+.theme-opt {
+  width:32px; height:32px; border-radius:50%; border:2px solid var(--border); cursor:pointer;
+  transition:transform 0.2s; position:relative;
+}
+.theme-opt:active { transform:scale(0.9); }
+.theme-opt.t-teal { background:#00c9a7; }
+.theme-opt.t-blue { background:#3b82f6; }
+.theme-opt.t-yellow { background:#fbbf24; }
+.theme-opt.active { border-color: #fff; box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--teal); }
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative; width: 44px; height: 24px;
+}
+.toggle-input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--card2); border: 1px solid var(--border);
+  transition: .4s; border-radius: 24px;
+}
+.toggle-slider:before {
+  position: absolute; content: ""; height: 18px; width: 18px;
+  left: 2px; bottom: 2px; background-color: var(--muted);
+  transition: .4s; border-radius: 50%;
+}
+.toggle-input:checked + .toggle-slider { background-color: var(--teal); border-color: var(--teal); }
+.toggle-input:checked + .toggle-slider:before { transform: translateX(20px); background-color: #fff; }
+
+/* Selectable Chips */
+.chip-group { display:flex; gap:8px; }
+.chip-opt {
+  background:var(--card2); border:1px solid var(--border);
+  color:var(--muted); padding:6px 12px; border-radius:8px;
+  font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;
+}
+.chip-opt.active {
+  background:rgba(0,201,167,0.15); color:var(--teal); border-color:rgba(0,201,167,0.4);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">RIF PRO <span style="color:var(--muted);font-size:11px;font-family:'DM Sans'">v3</span></div>
+  <div style="display:flex;align-items:center;gap:7px">
+    <button class="net-pill" id="netPill" onclick="toggleManualOffline()" title="Tap to toggle offline mode">
+      <div class="net-dot live" id="netDot"></div>
+      <span id="netLabel">Online</span>
+    </button>
+    <div class="header-chips">
+      <div class="alert-chip" id="debtChip">💸 <span id="debtCount">0</span> Debt</div>
+      <div class="alert-chip" id="taskChip">📌 <span id="taskCount">0</span> Tasks</div>
+    </div>
+  </div>
+</header>
+
+<!-- Connectivity bar (shown when offline) -->
+<div class="net-bar" id="netBar">
+  <span id="netBarIcon">📡</span>
+  <span id="netBarMsg">Offline — all your data is still available locally</span>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- HOME -->
+<div class="section active" id="home">
+  <div class="greeting">
+    <h1>What's on<br>your mind?</h1>
+    <p id="homeDate"></p>
+  </div>
+  <div class="alert-banner" id="alertBanner">
+    <div class="alert-banner-title">⚠️ Needs Your Attention</div>
+    <div id="alertItems"></div>
+  </div>
+  <div class="nav-grid">
+    <button class="nav-btn c-teal" onclick="show('add')">
+      <span class="btn-icon">➕</span>
+      <div class="btn-label">Add Memory</div>
+      <div class="btn-sub">Log anything</div>
+    </button>
+    <button class="nav-btn c-blue" onclick="show('records')">
+      <span class="btn-icon">📋</span>
+      <div class="btn-label">Records</div>
+      <div class="btn-sub">View logs</div>
+      <div class="badge" id="taskBadge">0</div>
+    </button>
+    <button class="nav-btn c-amber" onclick="show('money')">
+      <span class="btn-icon">💰</span>
+      <div class="btn-label">Money</div>
+      <div class="btn-sub">Track finances</div>
+      <div class="badge" id="debtBadge">0</div>
+    </button>
+    <button class="nav-btn c-purple" onclick="show('reminders')">
+      <span class="btn-icon">🔔</span>
+      <div class="btn-label">Reminders</div>
+      <div class="btn-sub">Set alerts</div>
+    </button>
+    <button class="nav-btn c-report" onclick="show('report')">
+      <span class="btn-icon">📊</span>
+      <div>
+        <div class="btn-label">Reports &amp; Analytics</div>
+        <div class="btn-sub">Charts · AI Insights · Export PDF</div>
+      </div>
+    </button>
+    <button class="nav-btn c-gray" onclick="show('settings')">
+      <span class="btn-icon">⚙️</span>
+      <div class="btn-label">Settings</div>
+      <div class="btn-sub">Theme · Font · Data</div>
+    </button>
+  </div>
+</div>
+
+<!-- ADD MEMORY -->
+<div class="section" id="add">
+  <div class="section-header">
+    <button class="back-btn" onclick="show('home')">←</button>
+    <div class="section-title">Add Memory</div>
+  </div>
+  <div class="field-group"><div class="field-label">What</div><input id="what" placeholder="What happened?"></div>
+  <div class="field-group"><div class="field-label">Where</div><input id="where" placeholder="Location"></div>
+  <div class="field-group"><div class="field-label">Why</div><input id="why" placeholder="Reason"></div>
+  <div class="field-group"><div class="field-label">Details</div><textarea id="how" placeholder="Additional details..."></textarea></div>
+  <div class="btn-row">
+    <div class="field-group" style="flex:1;margin:0"><div class="field-label">Quantity</div><input id="quantity" placeholder="Amount / count"></div>
+    <div class="field-group" style="flex:1;margin:0"><div class="field-label">Category</div>
+      <select id="category"><option>Work</option><option>Money</option><option>Personal</option><option>Task</option></select>
+    </div>
+  </div>
+  <div class="field-group"><div class="field-label">Photo (optional)</div><input type="file" id="photo" accept="image/*"></div>
+  <div class="btn-row" style="margin-top:14px">
+    <button class="btn btn-ghost" onclick="startVoice()">🎤 Voice</button>
+    <button class="btn btn-primary" onclick="saveMemory()">Save Memory</button>
+  </div>
+</div>
+
+<!-- RECORDS -->
+<div class="section" id="records">
+  <div class="section-header">
+    <button class="back-btn" onclick="show('home')">←</button>
+    <div class="section-title">Records</div>
+  </div>
+  <div id="list"></div>
+</div>
+
+<!-- MONEY -->
+<div class="section" id="money">
+  <div class="section-header">
+    <button class="back-btn" onclick="show('home')">←</button>
+    <div class="section-title">Money</div>
+  </div>
+  <div class="field-group"><div class="field-label">Amount</div><input id="amount" type="number" placeholder="0.00"></div>
+  <div class="btn-row">
+    <div class="field-group" style="flex:1;margin:0"><div class="field-label">Type</div>
+      <select id="type"><option>Expense</option><option>Income</option><option>Debt</option></select>
+    </div>
+    <div class="field-group" style="flex:1;margin:0"><div class="field-label">Status</div>
+      <select id="status"><option>Paid</option><option>Not Paid</option></select>
+    </div>
+  </div>
+  <div class="field-group"><div class="field-label">Description (optional)</div><input id="moneyDesc" placeholder="What is this for?"></div>
+  <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="saveMoney()">Save Entry</button>
+  <div class="divider">History</div>
+  <div id="moneyList"></div>
+</div>
+
+<!-- REMINDERS -->
+<div class="section" id="reminders">
+  <div class="section-header">
+    <button class="back-btn" onclick="show('home')">←</button>
+    <div class="section-title">Reminders</div>
+  </div>
+  <div class="field-group"><div class="field-label">Reminder Text</div><input id="remText" placeholder="What to remind?"></div>
+  <div class="btn-row">
+    <div class="field-group" style="flex:1;margin:0"><div class="field-label">Repeat</div>
+      <select id="repeat"><option value="once">Once</option><option value="hourly">Hourly</option><option value="daily">Daily</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
+    </div>
+    <div class="field-group" style="flex:1;margin:0"><div class="field-label">Alert Type</div>
+      <select id="alertType"><option>Alarm</option><option>SMS</option><option>Call</option></select>
+    </div>
+  </div>
+  <div class="field-group"><div class="field-label">Date &amp; Time</div><input type="datetime-local" id="remTime"></div>
+  <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="saveReminder()">Set Reminder</button>
+  <div class="divider">Active Reminders</div>
+  <div id="remList"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="section" id="settings">
+  <div class="section-header">
+    <button class="back-btn" onclick="show('home')">←</button>
+    <div class="section-title">Settings</div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-item">
+      <div>
+        <div class="si-label">Text Size</div>
+        <div class="si-desc">Adjust readability</div>
+      </div>
+      <div class="chip-group">
+        <div class="chip-opt active" id="fsNormal" onclick="setFontSize('normal')">Aa</div>
+        <div class="chip-opt" id="fsLarge" onclick="setFontSize('large')">Aa+</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-item" style="display:block">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div class="si-label">Theme Color</div>
+          <div class="si-desc">Customize button accents</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:15px;justify-content:center;padding-bottom:5px">
+        <div class="theme-opt t-teal active" id="thTeal" onclick="setTheme('teal')" title="Default Teal"></div>
+        <div class="theme-opt t-blue" id="thBlue" onclick="setTheme('blue')" title="Pro Blue"></div>
+        <div class="theme-opt t-yellow" id="thYellow" onclick="setTheme('yellow')" title="Pro Yellow"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-item" onclick="shareApp()">
+      <div>
+        <div class="si-label">Share App</div>
+        <div class="si-desc">Send to friends or device</div>
+      </div>
+      <div style="font-size:18px">🔗</div>
+    </div>
+    <div class="settings-item" onclick="window.open('https://github.com/yourrepo', '_blank')">
+      <div>
+        <div class="si-label">Rate Us</div>
+        <div class="si-desc">Support the development</div>
+      </div>
+      <div style="font-size:18px">⭐</div>
+    </div>
+  </div>
+
+  <div class="settings-group" style="border-color:rgba(255,87,87,0.3)">
+    <div class="settings-item" onclick="clearAllData()">
+      <div>
+        <div class="si-label" style="color:var(--red)">Clear All Data</div>
+        <div class="si-desc" style="color:rgba(255,87,87,0.7)">Delete memories, money & settings</div>
+      </div>
+      <div style="font-size:18px">🗑️</div>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-top:20px; color:var(--muted); font-size:11px">
+    RIF PRO v3.1 • Local Storage Mode
+  </div>
+</div>
+
+<!-- REPORT -->
+<div class="section" id="report">
+  <div class="section-header">
+    <button class="back-btn" onclick="show('home')">←</button>
+    <div class="section-title">Reports</div>
+  </div>
+
+  <!-- Offline notice inside report -->
+  <div class="offline-info" id="reportOfflineBanner">
+    <span style="font-size:22px;line-height:1">📡</span>
+    <div class="offline-info-body">
+      <strong>Offline Mode</strong>
+      Charts &amp; data work fine · AI insights use cached results · PDF export still works
+    </div>
+  </div>
+
+  <div class="filter-tabs">
+    <button class="filter-tab active" onclick="setFilter('today',this)">Today</button>
+    <button class="filter-tab" onclick="setFilter('month',this)">Month</button>
+    <button class="filter-tab" onclick="setFilter('year',this)">Year</button>
+    <button class="filter-tab" onclick="setFilter('all',this)">All</button>
+  </div>
+
+  <div class="summary-grid">
+    <div class="sum-card s-in"><div class="s-lbl">Income</div><div class="s-val" id="rIncome">0</div></div>
+    <div class="sum-card s-ex"><div class="s-lbl">Expense</div><div class="s-val" id="rExpense">0</div></div>
+    <div class="sum-card s-db"><div class="s-lbl">Unpaid</div><div class="s-val" id="rDebt">0</div></div>
+  </div>
+
+  <div class="chart-box">
+    <div class="chart-lbl">💼 Money Breakdown</div>
+    <canvas id="donutChart"></canvas>
+  </div>
+
+  <div class="chart-box">
+    <div class="chart-lbl">📈 6-Month Trend</div>
+    <canvas id="barChart"></canvas>
+  </div>
+
+  <div class="divider">⚠️ Unpaid Debts</div>
+  <div id="rUnpaidDebts"></div>
+
+  <div class="divider">📋 Pending Tasks</div>
+  <div id="rPendingTasks"></div>
+
+  <div class="divider">🤖 AI Insights</div>
+  <div class="insight-box" id="aiOutput">
+    <div style="color:var(--muted);font-size:13px;text-align:center;padding:6px 0">Tap below for personalized AI insights</div>
+  </div>
+  <button class="btn btn-purple" id="aiBtn" style="width:100%;margin-bottom:11px" onclick="getAIInsights()">🤖 Get AI Insights</button>
+  <button class="btn btn-blue" id="pdfBtn" style="width:100%;margin-bottom:24px" onclick="exportPDF()">📄 Export as PDF</button>
+</div>
+
+<script>
+// ── State & Settings Management ──────────────────────────────────────────────
+let currentFilter = 'today';
+let donutInst = null, barInst = null;
+let appSettings = JSON.parse(localStorage.getItem('rif_settings')) || {
+  fontSize: 'normal',
+  theme: 'teal'
+};
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'home') updateBadges();
+  if (id === 'records') loadRecords();
+  if (id === 'money') loadMoney();
+  if (id === 'reminders') loadReminders();
+  if (id === 'report') loadReport();
+  if (id === 'settings') loadSettingsUI();
+  window.scrollTo(0, 0);
+}
+
+// ── Settings Logic ───────────────────────────────────────────────────────────
+function loadSettingsUI() {
+  // Font Size
+  document.getElementById('fsNormal').classList.toggle('active', appSettings.fontSize === 'normal');
+  document.getElementById('fsLarge').classList.toggle('active', appSettings.fontSize === 'large');
+  
+  // Theme
+  document.getElementById('thTeal').classList.toggle('active', appSettings.theme === 'teal');
+  document.getElementById('thBlue').classList.toggle('active', appSettings.theme === 'blue');
+  document.getElementById('thYellow').classList.toggle('active', appSettings.theme === 'yellow');
+}
+
+function setFontSize(size) {
+  appSettings.fontSize = size;
+  saveSettings();
+  loadSettingsUI();
+  applySettings();
+  showToast('Text size updated', 'success');
+}
+
+function setTheme(theme) {
+  appSettings.theme = theme;
+  saveSettings();
+  loadSettingsUI();
+  applySettings();
+  showToast('Theme updated', 'success');
+}
+
+function saveSettings() {
+  localStorage.setItem('rif_settings', JSON.stringify(appSettings));
+}
+
+function applySettings() {
+  // Apply Font
+  if (appSettings.fontSize === 'large') {
+    document.body.classList.add('fs-large');
+  } else {
+    document.body.classList.remove('fs-large');
+  }
+
+  // Apply Theme
+  document.body.classList.remove('theme-blue', 'theme-yellow');
+  if (appSettings.theme === 'blue') document.body.classList.add('theme-blue');
+  if (appSettings.theme === 'yellow') document.body.classList.add('theme-yellow');
+}
+
+function shareApp() {
+  const data = {
+    title: 'RIF PRO v3',
+    text: 'Check out RIF PRO - A powerful personal tracker app.',
+    url: window.location.href
+  };
+  
+  if (navigator.share) {
+    navigator.share(data).catch(console.error);
+  } else {
+    // Fallback
+    navigator.clipboard.writeText(data.url).then(() => {
+      showToast('Link copied to clipboard!', 'info');
+    });
+  }
+}
+
+function clearAllData() {
+  if (confirm('Are you sure you want to delete ALL data? This cannot be undone.')) {
+    if (confirm('This will wipe your memories, finances, reminders, and settings. Final check?')) {
+      localStorage.clear();
+      appSettings = { fontSize: 'normal', theme: 'teal' }; // Reset defaults
+      location.reload();
+    }
+  }
+}
+
+// ── Date Helpers ─────────────────────────────────────────────────────────────
+function parseDate(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+function isToday(str) {
+  const d = parseDate(str); if (!d) return false;
+  const n = new Date();
+  return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();
+}
+function isMonth(str) {
+  const d = parseDate(str); if (!d) return false;
+  const n = new Date();
+  return d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();
+}
+function isYear(str) {
+  const d = parseDate(str); if (!d) return false;
+  return d.getFullYear()===new Date().getFullYear();
+}
+function filterPeriod(arr) {
+  if (currentFilter === 'all') return arr;
+  return arr.filter(item => {
+    const t = item.time || '';
+    if (currentFilter === 'today') return isToday(t);
+    if (currentFilter === 'month') return isMonth(t);
+    if (currentFilter === 'year') return isYear(t);
+    return true;
+  });
+}
+function fmtDate(str) {
+  if (!str) return ''; const d = parseDate(str);
+  if (!d) return str;
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function fmtAmt(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toFixed(0);
+}
+
+// ── Home / Badges ────────────────────────────────────────────────────────────
+document.getElementById('homeDate').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+function updateBadges() {
+  const money   = JSON.parse(localStorage.getItem('rif_money')   || '[]');
+  const records = JSON.parse(localStorage.getItem('rif_records') || '[]');
+  const unpaid  = money.filter(m => m.type==='Debt' && m.status==='Not Paid');
+  const pending = records.filter(r => !r.done);
+
+  document.getElementById('debtBadge').textContent  = unpaid.length;
+  document.getElementById('taskBadge').textContent  = pending.length;
+  document.getElementById('debtBadge').classList.toggle('show', unpaid.length > 0);
+  document.getElementById('taskBadge').classList.toggle('show', pending.length > 0);
+  document.getElementById('debtCount').textContent  = unpaid.length;
+  document.getElementById('taskCount').textContent  = pending.length;
+  document.getElementById('debtChip').classList.toggle('vis', unpaid.length > 0);
+  document.getElementById('taskChip').classList.toggle('vis', pending.length > 0);
+
+  let html = '';
+  unpaid.slice(0,3).forEach(d => { html += `<div class="alert-banner-item">💸 Unpaid debt: <strong>${parseFloat(d.amount).toLocaleString()}</strong>${d.desc?' — '+d.desc:''}</div>`; });
+  pending.slice(0,3).forEach(r => { html += `<div class="alert-banner-item">📌 Pending: <strong>${r.what}</strong></div>`; });
+  document.getElementById('alertItems').innerHTML = html;
+  document.getElementById('alertBanner').classList.toggle('vis', unpaid.length>0 || pending.length>0);
+}
+
+// ── Memory ───────────────────────────────────────────────────────────────────
+function saveMemory() {
+  const file = document.getElementById('photo').files[0];
+  const reader = new FileReader();
+  reader.onload = function() {
+    const data = {
+      what: what.value.trim(), where: where.value, why: why.value,
+      how: how.value, quantity: quantity.value,
+      category: category.value, image: file ? reader.result : '',
+      time: new Date().toISOString(), done: false
+    };
+    if (!data.what) { alert('Please enter what this memory is about.'); return; }
+    const records = JSON.parse(localStorage.getItem('rif_records')||'[]');
+    records.push(data);
+    localStorage.setItem('rif_records', JSON.stringify(records));
+    ['what','where','why','how','quantity'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('photo').value='';
+    show('home');
+  };
+  if (file) { reader.readAsDataURL(file); } else { reader.onload(); }
+}
+
+function loadRecords() {
+  const records = JSON.parse(localStorage.getItem('rif_records')||'[]');
+  const list = document.getElementById('list');
+  if (!records.length) { list.innerHTML = '<div class="empty-state"><div class="ei">📭</div>No records yet</div>'; return; }
+  list.innerHTML = '';
+  [...records].reverse().forEach((r, i) => {
+    const ri = records.length - 1 - i;
+    list.innerHTML += `
+      <div class="card" style="${!r.done?'border-color:rgba(255,179,71,0.2)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div class="card-title" style="flex:1">${r.what}</div>
+          ${r.done ? `<span class="badge-done">✓ Done</span>` : `<span class="badge-pend">⏳ Pending</span>`}
+        </div>
+        ${r.where ? `<div class="card-meta">${r.where} · ${fmtDate(r.time)}</div>` : `<div class="card-meta">${fmtDate(r.time)}</div>`}
+        ${r.quantity ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">Qty: ${r.quantity}</div>` : ''}
+        ${r.how ? `<div style="font-size:12px;color:#7a99bb;margin-top:6px">${r.how}</div>` : ''}
+        <span class="tag t-blue" style="margin-top:8px;display:inline-block">${r.category}</span>
+        <div class="card-actions">
+          ${!r.done
+            ? `<button class="btn-sm" style="background:rgba(16,212,142,0.15);color:var(--success)" onclick="markDone(${ri})">✓ Mark Done</button>`
+            : `<button class="btn-sm" style="background:rgba(255,179,71,0.1);color:var(--amber)" onclick="markUndone(${ri})">↩ Reopen</button>`}
+          <button class="btn-sm" style="background:rgba(61,154,255,0.12);color:var(--blue)" onclick="addRemFromRecord(${ri})">🔔 Remind</button>
+          <button class="btn-sm" style="background:rgba(255,87,87,0.1);color:var(--red)" onclick="deleteRecord(${ri})">🗑</button>
+        </div>
+        ${r.image ? `<img class="img-preview" src="${r.image}">` : ''}
+      </div>`;
+  });
+}
+function markDone(i)   { toggle('rif_records', i, 'done', true); }
+function markUndone(i) { toggle('rif_records', i, 'done', false); }
+function toggle(key, i, field, val) {
+  const arr = JSON.parse(localStorage.getItem(key)||'[]');
+  arr[i][field] = val; localStorage.setItem(key, JSON.stringify(arr));
+  if (key==='rif_records') loadRecords(); else loadMoney();
+  updateBadges();
+}
+function deleteRecord(i) {
+  if (!confirm('Delete this record?')) return;
+  const arr = JSON.parse(localStorage.getItem('rif_records')||'[]');
+  arr.splice(i,1); localStorage.setItem('rif_records',JSON.stringify(arr)); loadRecords();
+}
+function addRemFromRecord(i) {
+  document.getElementById('remText').value = JSON.parse(localStorage.getItem('rif_records'))[i].what;
+  show('reminders');
+}
+
+// ── Money ────────────────────────────────────────────────────────────────────
+function saveMoney() {
+  const amt = document.getElementById('amount').value;
+  if (!amt) { alert('Please enter an amount.'); return; }
+  const entry = {
+    amount: amt, type: document.getElementById('type').value,
+    status: document.getElementById('status').value,
+    desc: document.getElementById('moneyDesc').value,
+    time: new Date().toISOString()
+  };
+  const data = JSON.parse(localStorage.getItem('rif_money')||'[]');
+  data.push(entry); localStorage.setItem('rif_money', JSON.stringify(data));
+  document.getElementById('amount').value=''; document.getElementById('moneyDesc').value='';
+  loadMoney(); updateBadges();
+}
+function loadMoney() {
+  const data = JSON.parse(localStorage.getItem('rif_money')||'[]');
+  const div = document.getElementById('moneyList');
+  if (!data.length) { div.innerHTML='<div class="empty-state"><div class="ei">💳</div>No entries yet</div>'; return; }
+  div.innerHTML='';
+  [...data].reverse().forEach((d,i) => {
+    const ri = data.length-1-i;
+    const isUnpaid = d.type==='Debt' && d.status==='Not Paid';
+    const typeColor = d.type==='Income'?'var(--success)':d.type==='Debt'?'var(--amber)':'var(--red)';
+    const typeTag = d.type==='Income'?'t-teal':d.type==='Expense'?'t-red':'t-amber';
+    const stTag = d.status==='Paid'?'t-green':'t-amber';
+    div.innerHTML += `
+      <div class="card" style="${isUnpaid?'border-color:rgba(255,87,87,0.35)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div>
+            <span class="tag ${typeTag}">${d.type}</span>
+            <span class="tag ${stTag}" style="margin-left:5px">${d.status}</span>
+          </div>
+          <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:700;color:${typeColor}">${parseFloat(d.amount).toLocaleString()}</div>
+        </div>
+        ${d.desc?`<div style="font-size:12px;color:#7a99bb;margin-top:5px">${d.desc}</div>`:''}
+        <div class="card-meta" style="margin-top:4px">${fmtDate(d.time)}</div>
+        ${isUnpaid?`<div style="font-size:11px;color:var(--red);margin-top:5px">⚠️ This debt is unpaid</div>`:''}
+        <div class="card-actions">
+          ${isUnpaid?`<button class="btn-sm" style="background:rgba(16,212,142,0.15);color:var(--success)" onclick="markPaid(${ri})">✓ Mark Paid</button>`:''}
+          <button class="btn-sm" style="background:rgba(61,154,255,0.12);color:var(--blue)" onclick="addRemFromMoney(${ri})">🔔 Remind</button>
+          <button class="btn-sm" style="background:rgba(255,87,87,0.1);color:var(--red)" onclick="deleteMoney(${ri})">🗑</button>
+        </div>
+      </div>`;
+  });
+}
+function markPaid(i) { toggle('rif_money', i, 'status', 'Paid'); }
+function deleteMoney(i) {
+  if (!confirm('Delete this entry?')) return;
+  const arr = JSON.parse(localStorage.getItem('rif_money')||'[]');
+  arr.splice(i,1); localStorage.setItem('rif_money',JSON.stringify(arr)); loadMoney(); updateBadges();
+}
+function addRemFromMoney(i) {
+  const d = JSON.parse(localStorage.getItem('rif_money'))[i];
+  document.getElementById('remText').value = d.type+' '+d.amount+(d.desc?' – '+d.desc:'');
+  show('reminders');
+}
+
+// ── Reminders ────────────────────────────────────────────────────────────────
+function saveReminder() {
+  const text = document.getElementById('remText').value.trim();
+  if (!text) { alert('Please enter reminder text.'); return; }
+  const r = { text, time: document.getElementById('remTime').value,
+    repeat: document.getElementById('repeat').value, type: document.getElementById('alertType').value };
+  const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
+  data.push(r); localStorage.setItem('rif_rem',JSON.stringify(data));
+  document.getElementById('remText').value=''; loadReminders();
+}
+function loadReminders() {
+  const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
+  const div  = document.getElementById('remList');
+  if (!data.length) { div.innerHTML='<div class="empty-state"><div class="ei">🔕</div>No reminders set</div>'; return; }
+  div.innerHTML = data.map((r,i) => `
+    <div class="card">
+      <div class="card-title">${r.text}</div>
+      <div class="card-meta">${r.time?fmtDate(r.time):'No time'} · ${r.repeat} · ${r.type}</div>
+      <div class="card-actions">
+        <button class="btn-sm" style="background:rgba(255,87,87,0.1);color:var(--red)" onclick="deleteReminder(${i})">🗑 Delete</button>
+      </div>
+    </div>`).join('');
+}
+function deleteReminder(i) {
+  if (!confirm('Delete this reminder?')) return;
+  const arr = JSON.parse(localStorage.getItem('rif_rem')||'[]');
+  arr.splice(i,1); localStorage.setItem('rif_rem',JSON.stringify(arr)); loadReminders();
+}
+setInterval(() => {
+  const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
+  const n = new Date();
+  data.forEach(r => {
+    if (!r.time) return;
+    const rt = new Date(r.time); let trigger = false;
+    if (r.repeat==='once'    && n.toISOString().slice(0,16)===r.time) trigger=true;
+    if (r.repeat==='hourly'  && n.getMinutes()===rt.getMinutes()) trigger=true;
+    if (r.repeat==='daily'   && n.getHours()===rt.getHours() && n.getMinutes()===rt.getMinutes()) trigger=true;
+    if (r.repeat==='monthly' && n.getDate()===rt.getDate() && n.getHours()===rt.getHours()) trigger=true;
+    if (r.repeat==='yearly'  && n.getMonth()===rt.getMonth() && n.getDate()===rt.getDate()) trigger=true;
+    if (trigger) alert(`${r.type} Reminder: ${r.text}`);
+  });
+}, 60000);
+
+// ── Report ───────────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  loadReport();
+}
+function loadReport() {
+  const money   = JSON.parse(localStorage.getItem('rif_money')  ||'[]');
+  const records = JSON.parse(localStorage.getItem('rif_records')||'[]');
+  const fm = filterPeriod(money);
+
+  const income  = fm.filter(m=>m.type==='Income').reduce((s,m)=>s+parseFloat(m.amount||0),0);
+  const expense = fm.filter(m=>m.type==='Expense').reduce((s,m)=>s+parseFloat(m.amount||0),0);
+  const debtUnpaid = money.filter(m=>m.type==='Debt'&&m.status==='Not Paid').reduce((s,m)=>s+parseFloat(m.amount||0),0);
+
+  document.getElementById('rIncome').textContent  = fmtAmt(income);
+  document.getElementById('rExpense').textContent = fmtAmt(expense);
+  document.getElementById('rDebt').textContent    = fmtAmt(debtUnpaid);
+
+  // Unpaid debts list (all time)
+  const unpaid = money.filter(m=>m.type==='Debt'&&m.status==='Not Paid');
+  const udDiv = document.getElementById('rUnpaidDebts');
+  udDiv.innerHTML = unpaid.length ? unpaid.map(d=>`
+    <div class="card" style="border-color:rgba(255,87,87,0.3)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div class="card-title">💸 ${d.desc||'Debt'}</div><div class="card-meta">${fmtDate(d.time)}</div></div>
+        <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:700;color:var(--red)">${parseFloat(d.amount).toLocaleString()}</div>
+      </div>
+    </div>`).join('')
+    : '<div class="empty-state"><div class="ei">✅</div>No unpaid debts!</div>';
+
+  // Pending tasks (all time)
+  const pending = records.filter(r=>!r.done);
+  const ptDiv = document.getElementById('rPendingTasks');
+  ptDiv.innerHTML = pending.length ? pending.map(r=>`
+    <div class="card" style="border-color:rgba(255,179,71,0.3)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div><div class="card-title">📌 ${r.what}</div><div class="card-meta">${r.where||''} ${r.where?'·':''} ${fmtDate(r.time)}</div></div>
+        <span class="badge-pend">Pending</span>
+      </div>
+    </div>`).join('')
+    : '<div class="empty-state"><div class="ei">🎉</div>All tasks complete!</div>';
+
+  renderCharts(fm, money);
+}
+
+function renderCharts(filtered, allMoney) {
+  if (donutInst) { donutInst.destroy(); donutInst=null; }
+  if (barInst)   { barInst.destroy();   barInst=null; }
+
+  const inc = filtered.filter(m=>m.type==='Income').reduce((s,m)=>s+parseFloat(m.amount||0),0);
+  const exp = filtered.filter(m=>m.type==='Expense').reduce((s,m)=>s+parseFloat(m.amount||0),0);
+  const dbt = filtered.filter(m=>m.type==='Debt').reduce((s,m)=>s+parseFloat(m.amount||0),0);
+
+  // Donut
+  donutInst = new Chart(document.getElementById('donutChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Income','Expense','Debt'],
+      datasets: [{ data:[inc,exp,dbt],
+        backgroundColor:['rgba(16,212,142,0.8)','rgba(255,87,87,0.8)','rgba(255,179,71,0.8)'],
+        borderColor:['#10d48e','#ff5757','#ffb347'], borderWidth:2 }]
+    },
+    options: {
+      responsive:true, cutout:'64%',
+      plugins:{ legend:{ labels:{ color:'#c8d8ee', font:{family:'DM Sans',size:12} } } }
+    }
+  });
+
+  // Bar — last 6 months
+  const labels = [];
+  for (let i=5;i>=0;i--) {
+    const d = new Date(new Date().getFullYear(), new Date().getMonth()-i, 1);
+    labels.push(d.toLocaleDateString('en-US',{month:'short',year:'2-digit'}));
+  }
+  const getData = (type) => labels.map(lbl =>
+    allMoney.filter(m => {
+      const d = parseDate(m.time);
+      return d && d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})===lbl && m.type===type;
+    }).reduce((s,m)=>s+parseFloat(m.amount||0),0)
+  );
+
+  barInst = new Chart(document.getElementById('barChart').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        { label:'Income',  data:getData('Income'),  backgroundColor:'rgba(16,212,142,0.7)', borderColor:'#10d48e', borderWidth:1, borderRadius:6 },
+        { label:'Expense', data:getData('Expense'), backgroundColor:'rgba(255,87,87,0.7)',  borderColor:'#ff5757', borderWidth:1, borderRadius:6 }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{ labels:{ color:'#c8d8ee', font:{family:'DM Sans',size:12} } } },
+      scales:{
+        x:{ ticks:{color:'#4e6a8a'}, grid:{color:'rgba(255,255,255,0.04)'} },
+        y:{ ticks:{color:'#4e6a8a'}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+}
+
+// ── AI Insights ──────────────────────────────────────────────────────────────
+async function getAIInsights() {
+  const btn = document.getElementById('aiBtn');
+  const out = document.getElementById('aiOutput');
+
+  // ── OFFLINE: show cached insights ──────────────────────────────────────────
+  if (!effective()) {
+    const raw = localStorage.getItem('rif_ai_cache');
+    if (raw) {
+      try {
+        const { lines, time } = JSON.parse(raw);
+        out.innerHTML = `<div class="cache-lbl">📦 Cached · ${fmtDate(time)}</div>` +
+          lines.map(l=>`<div class="insight-item">${l}</div>`).join('');
+        showToast('📦 Showing cached insights', 'info');
+      } catch(e) {
+        out.innerHTML='<div class="insight-item">📦 Cache corrupted — go online for fresh insights.</div>';
+      }
+    } else {
+      out.innerHTML='<div class="insight-item">📡 No internet and no cached insights yet. Connect once to generate your first insights.</div>';
+      showToast('📡 No internet · No cached insights', 'warning');
+    }
+    return;
+  }
+
+  // ── ONLINE: fetch from Claude ───────────────────────────────────────────────
+  btn.disabled=true; btn.textContent='⏳ Thinking...';
+  out.innerHTML='<div style="color:var(--purple);font-size:13px;text-align:center;padding:8px 0">🤖 Analyzing your data...</div>';
+
+  const money   = JSON.parse(localStorage.getItem('rif_money')  ||'[]');
+  const records = JSON.parse(localStorage.getItem('rif_records')||'[]');
+  const totalIncome  = money.filter(m=>m.type==='Income').reduce((s,m)=>s+parseFloat(m.amount||0),0);
+  const totalExpense = money.filter(m=>m.type==='Expense').reduce((s,m)=>s+parseFloat(m.amount||0),0);
+  const unpaidDebts  = money.filter(m=>m.type==='Debt'&&m.status==='Not Paid');
+  const totalUnpaid  = unpaidDebts.reduce((s,m)=>s+parseFloat(m.amount||0),0);
+  const pending      = records.filter(r=>!r.done);
+
+  const prompt = `You are a smart personal finance and task assistant reviewing a user's RIF PRO app data.
+
+FINANCIALS:
+- Total Income: ${totalIncome.toLocaleString()}
+- Total Expenses: ${totalExpense.toLocaleString()}
+- Net Balance: ${(totalIncome-totalExpense).toLocaleString()}
+- Unpaid Debts: ${unpaidDebts.length} items totaling ${totalUnpaid.toLocaleString()}
+
+RECENT TRANSACTIONS (last 10):
+ ${money.slice(-10).map(m=>`  • ${m.type}: ${m.amount} | ${m.status} | ${m.desc||'no description'} | ${fmtDate(m.time)}`).join('\n')}
+
+PENDING TASKS (${pending.length} total):
+ ${pending.slice(0,6).map(r=>`  • "${r.what}" at "${r.where||'unknown'}" — logged ${fmtDate(r.time)}`).join('\n')}
+
+Give exactly 5 sharp, personalized insights. Each is one sentence, starts with a relevant emoji, references real numbers from the data. Cover:
+1. Spending health vs income (warn if expenses > income)
+2. Most urgent unpaid debt(s) by amount
+3. A forgotten or oldest pending task
+4. One positive observation (if any) or savings tip
+5. One clear action they should take today
+
+Output only 5 lines separated by newlines. No headers, no numbers, no extra text.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:800,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content.map(c=>c.type==='text'?c.text:'').join('\n');
+    const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+
+    // Cache the result for offline use
+    localStorage.setItem('rif_ai_cache', JSON.stringify({ lines, time: new Date().toISOString() }));
+
+    out.innerHTML = lines.map(l=>`<div class="insight-item">${l}</div>`).join('');
+    showToast('✅ Insights updated & cached', 'success');
+  } catch(e) {
+    // Try to fall back to cache on network error
+    const raw = localStorage.getItem('rif_ai_cache');
+    if (raw) {
+      try {
+        const { lines, time } = JSON.parse(raw);
+        out.innerHTML = `<div class="cache-lbl">📦 Network error — showing cache · ${fmtDate(time)}</div>` +
+          lines.map(l=>`<div class="insight-item">${l}</div>`).join('');
+        showToast('⚠️ Network error — showing cached insights', 'warning');
+      } catch(_) {
+        out.innerHTML='<div class="insight-item">⚠️ Could not connect to AI. Please try again.</div>';
+      }
+    } else {
+      out.innerHTML='<div class="insight-item">⚠️ Could not connect to AI. Please check your connection.</div>';
+    }
+  }
+  btn.disabled=false;
+  updateNetUI(); // refresh AI button label
+}
+
+// ── Export PDF ────────────────────────────────────────────────────────────────
+async function exportPDF() {
+  const btn = document.getElementById('pdfBtn');
+  btn.disabled=true; btn.textContent='⏳ Generating PDF...';
+  try {
+    const el = document.getElementById('report');
+    const canvas = await html2canvas(el, { backgroundColor:'#050d1a', scale:2, logging:false, useCORS:true });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pgW = pdf.internal.pageSize.getWidth();
+    const pgH = pdf.internal.pageSize.getHeight();
+    const imgH = (canvas.height * pgW) / canvas.width;
+    let y=0;
+    while (y < imgH) {
+      if (y>0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,-y,pgW,imgH);
+      y += pgH;
+    }
+    pdf.save(`RIF_Report_${new Date().toISOString().slice(0,10)}.pdf`);
+  } catch(e) {
+    alert('PDF export failed: '+e.message);
+  }
+  btn.disabled=false; btn.textContent='📄 Export as PDF';
+}
+
+// ── Network / Offline System ─────────────────────────────────────────────────
+let isOnline    = navigator.onLine;
+let forceOffline = false;
+
+function effective() { return isOnline && !forceOffline; }
+
+function updateNetUI(announce) {
+  const on    = effective();
+  const dot   = document.getElementById('netDot');
+  const lbl   = document.getElementById('netLabel');
+  const pill  = document.getElementById('netPill');
+  const bar   = document.getElementById('netBar');
+  const barMsg= document.getElementById('netBarMsg');
+  const barIco= document.getElementById('netBarIcon');
+  const rpBan = document.getElementById('reportOfflineBanner');
+  const aiBtn = document.getElementById('aiBtn');
+
+  // Dot state
+  dot.className = 'net-dot ' + (on ? 'live' : forceOffline ? 'forced' : 'dead');
+
+  // Pill label + color
+  if (on) {
+    lbl.textContent = 'Online';
+    pill.style.borderColor = 'rgba(16,212,142,0.35)';
+    lbl.style.color = 'var(--success)';
+  } else if (forceOffline) {
+    lbl.textContent = 'Forced Offline';
+    pill.style.borderColor = 'rgba(255,179,71,0.4)';
+    lbl.style.color = 'var(--amber)';
+  } else {
+    lbl.textContent = 'Offline';
+    pill.style.borderColor = 'rgba(78,106,138,0.4)';
+    lbl.style.color = '#8aa8c8';
+  }
+
+  // Connectivity bar
+  bar.classList.toggle('vis', !on);
+  if (!on) {
+    if (forceOffline) {
+      bar.className = 'net-bar vis nb-forced';
+      barIco.textContent = '📴';
+      barMsg.textContent = 'Forced offline mode — tap the pill to go back online';
+    } else {
+      bar.className = 'net-bar vis nb-offline';
+      barIco.textContent = '📡';
+      barMsg.textContent = 'No internet — all your data is available locally';
+    }
+  }
+
+  // Report offline banner
+  if (rpBan) rpBan.classList.toggle('vis', !on);
+
+  // AI button state
+  if (aiBtn) {
+    const hasCached = !!localStorage.getItem('rif_ai_cache');
+    if (on) {
+      aiBtn.disabled = false;
+      aiBtn.style.opacity = '1';
+      aiBtn.textContent = '🤖 Get AI Insights';
+    } else {
+      aiBtn.disabled = false; // keep clickable to show cache
+      aiBtn.style.opacity = hasCached ? '0.85' : '0.55';
+      aiBtn.textContent = hasCached ? '📦 Show Cached Insights' : '🤖 AI (Offline)';
+    }
+  }
+}
+
+function toggleManualOffline() {
+  forceOffline = !forceOffline;
+  updateNetUI(true);
+  if (forceOffline) {
+    showToast('📴 Switched to offline mode', 'warning');
+  } else {
+    showToast(isOnline ? '🟢 Back online' : '📡 Still no internet connection', isOnline ? 'success' : 'warning');
+  }
+}
+
+window.addEventListener('online',  () => {
+  isOnline = true; updateNetUI();
+  if (!forceOffline) showToast('🟢 Internet connection restored', 'success');
+});
+window.addEventListener('offline', () => {
+  isOnline = false; updateNetUI();
+  showToast('🔴 Lost internet connection — data still works', 'warning');
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let _toastTimer = null;
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  t.textContent = msg;
+  t.className = `toast t-${type}`;
+  // double rAF to ensure transition fires
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3600);
+}
+
+// ── Voice ─────────────────────────────────────────────────────────────────────
+function startVoice() {
+  try {
+    const rec = new (window.SpeechRecognition||window.webkitSpeechRecognition)();
+    rec.onresult = e => { document.getElementById('what').value = e.results[0][0].transcript; };
+    rec.start();
+  } catch(e) { alert('Voice recognition not supported on this browser.'); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+updateBadges();
+applySettings(); // Apply user settings immediately
+updateNetUI();
+</script>
+</body>
+</html>
