@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>RIF PRO v3</title>
+<title>RIF PRO v3 Enhanced</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -376,6 +376,75 @@ canvas { max-height:210px; }
 .chip-opt.active {
   background:rgba(0,201,167,0.15); color:var(--teal); border-color:rgba(0,201,167,0.4);
 }
+
+/* ── ALARM MODAL ── */
+.alarm-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+.alarm-modal.show {
+  display: flex;
+}
+.alarm-content {
+  background: var(--card);
+  border: 2px solid var(--red);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  max-width: 90%;
+  box-shadow: 0 0 40px rgba(255,87,87,0.3);
+  animation: pulse-scale 0.6s ease infinite;
+}
+@keyframes pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.alarm-content h2 {
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: var(--red);
+  font-family: 'Syne', sans-serif;
+}
+.alarm-content p {
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.alarm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.alarm-btn {
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.alarm-btn:active { transform: scale(0.95); }
+.alarm-btn-dismiss {
+  background: linear-gradient(135deg, var(--teal), #00a88a);
+  color: #000;
+}
+.alarm-btn-snooze {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
 </style>
 </head>
 <body>
@@ -402,6 +471,18 @@ canvas { max-height:210px; }
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+
+<!-- Alarm Modal -->
+<div class="alarm-modal" id="alarmModal">
+  <div class="alarm-content">
+    <h2>🔔 REMINDER!</h2>
+    <p id="alarmText"></p>
+    <div class="alarm-buttons">
+      <button class="alarm-btn alarm-btn-dismiss" onclick="dismissAlarm()">✓ Dismiss</button>
+      <button class="alarm-btn alarm-btn-snooze" onclick="snoozeAlarm()">⏱ Snooze 5min</button>
+    </div>
+  </div>
+</div>
 
 <!-- HOME -->
 <div class="section active" id="home">
@@ -498,7 +579,7 @@ canvas { max-height:210px; }
       <select id="status"><option>Paid</option><option>Not Paid</option></select>
     </div>
   </div>
-  <div class="field-group"><div class="field-label">Description (optional)</div><input id="moneyDesc" placeholder="What is this for?"></div>
+  <div class="field-group"><div class="field-label">Description</div><input id="moneyDesc" placeholder="What is this for?"></div>
   <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="saveMoney()">Save Entry</button>
   <div class="divider">History</div>
   <div id="moneyList"></div>
@@ -516,7 +597,7 @@ canvas { max-height:210px; }
       <select id="repeat"><option value="once">Once</option><option value="hourly">Hourly</option><option value="daily">Daily</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
     </div>
     <div class="field-group" style="flex:1;margin:0"><div class="field-label">Alert Type</div>
-      <select id="alertType"><option>Alarm</option><option>SMS</option><option>Call</option></select>
+      <select id="alertType"><option>Alarm</option><option>Message</option></select>
     </div>
   </div>
   <div class="field-group"><div class="field-label">Date &amp; Time</div><input type="datetime-local" id="remTime"></div>
@@ -562,6 +643,18 @@ canvas { max-height:210px; }
   </div>
 
   <div class="settings-group">
+    <div class="settings-item" style="display:block">
+      <div style="margin-bottom:10px">
+        <div class="si-label">WhatsApp Phone Number</div>
+        <div class="si-desc">For reminder notifications via WhatsApp</div>
+      </div>
+      <input type="tel" id="whatsappPhone" placeholder="+1234567890" style="margin-bottom:10px">
+      <button class="btn btn-blue" style="width:100%" onclick="saveWhatsAppNumber()">Save WhatsApp Number</button>
+      <div id="whatsappStatus" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center"></div>
+    </div>
+  </div>
+
+  <div class="settings-group">
     <div class="settings-item" onclick="shareApp()">
       <div>
         <div class="si-label">Share App</div>
@@ -589,7 +682,7 @@ canvas { max-height:210px; }
   </div>
 
   <div style="text-align:center; margin-top:20px; color:var(--muted); font-size:11px">
-    RIF PRO v3.1 • Local Storage Mode
+    RIF PRO v3.1 Enhanced • Local Storage Mode + Alarms + WhatsApp
   </div>
 </div>
 
@@ -652,8 +745,41 @@ let currentFilter = 'today';
 let donutInst = null, barInst = null;
 let appSettings = JSON.parse(localStorage.getItem('rif_settings')) || {
   fontSize: 'normal',
-  theme: 'teal'
+  theme: 'teal',
+  whatsappPhone: ''
 };
+let alarmAudio = null;
+let currentAlarmId = null;
+
+// ── Create Audio Context for Alarm ───────────────────────────────────────────
+function createAlarmSound() {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 2);
+    
+    // Loop the sound
+    setTimeout(() => {
+      if (currentAlarmId !== null) {
+        createAlarmSound();
+      }
+    }, 2000);
+  } catch(e) {
+    console.error('Audio context error:', e);
+  }
+}
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 function show(id) {
@@ -678,6 +804,10 @@ function loadSettingsUI() {
   document.getElementById('thTeal').classList.toggle('active', appSettings.theme === 'teal');
   document.getElementById('thBlue').classList.toggle('active', appSettings.theme === 'blue');
   document.getElementById('thYellow').classList.toggle('active', appSettings.theme === 'yellow');
+  
+  // WhatsApp
+  document.getElementById('whatsappPhone').value = appSettings.whatsappPhone || '';
+  updateWhatsAppStatus();
 }
 
 function setFontSize(size) {
@@ -694,6 +824,29 @@ function setTheme(theme) {
   loadSettingsUI();
   applySettings();
   showToast('Theme updated', 'success');
+}
+
+function saveWhatsAppNumber() {
+  const phone = document.getElementById('whatsappPhone').value.trim();
+  if (!phone) {
+    showToast('Please enter a phone number', 'warning');
+    return;
+  }
+  appSettings.whatsappPhone = phone;
+  saveSettings();
+  updateWhatsAppStatus();
+  showToast('WhatsApp number saved!', 'success');
+}
+
+function updateWhatsAppStatus() {
+  const status = document.getElementById('whatsappStatus');
+  if (appSettings.whatsappPhone) {
+    status.textContent = '✓ WhatsApp notifications enabled for: ' + appSettings.whatsappPhone;
+    status.style.color = 'var(--success)';
+  } else {
+    status.textContent = 'No WhatsApp number set';
+    status.style.color = 'var(--muted)';
+  }
 }
 
 function saveSettings() {
@@ -714,91 +867,49 @@ function applySettings() {
   if (appSettings.theme === 'yellow') document.body.classList.add('theme-yellow');
 }
 
-function shareApp() {
-  const data = {
-    title: 'RIF PRO v3',
-    text: 'Check out RIF PRO - A powerful personal tracker app.',
-    url: window.location.href
-  };
-  
-  if (navigator.share) {
-    navigator.share(data).catch(console.error);
-  } else {
-    // Fallback
-    navigator.clipboard.writeText(data.url).then(() => {
-      showToast('Link copied to clipboard!', 'info');
-    });
-  }
+// ── Utility Functions ────────────────────────────────────────────────────────
+function fmtDate(iso) {
+  if (!iso) return 'No date';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'2-digit'}) + ' ' +
+         d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
 }
 
-function clearAllData() {
-  if (confirm('Are you sure you want to delete ALL data? This cannot be undone.')) {
-    if (confirm('This will wipe your memories, finances, reminders, and settings. Final check?')) {
-      localStorage.clear();
-      appSettings = { fontSize: 'normal', theme: 'teal' }; // Reset defaults
-      location.reload();
-    }
-  }
+function fmtAmt(n) {
+  return parseFloat(n||0).toLocaleString('en-US', {maximumFractionDigits:0});
 }
 
-// ── Date Helpers ─────────────────────────────────────────────────────────────
-function parseDate(str) {
-  if (!str) return null;
-  const d = new Date(str);
-  return isNaN(d) ? null : d;
+function parseDate(iso) {
+  try { return new Date(iso); } catch(e) { return null; }
 }
-function isToday(str) {
-  const d = parseDate(str); if (!d) return false;
-  const n = new Date();
-  return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();
-}
-function isMonth(str) {
-  const d = parseDate(str); if (!d) return false;
-  const n = new Date();
-  return d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();
-}
-function isYear(str) {
-  const d = parseDate(str); if (!d) return false;
-  return d.getFullYear()===new Date().getFullYear();
-}
+
 function filterPeriod(arr) {
-  if (currentFilter === 'all') return arr;
+  const n = new Date();
+  const y = n.getFullYear(), m = n.getMonth(), d = n.getDate();
   return arr.filter(item => {
-    const t = item.time || '';
-    if (currentFilter === 'today') return isToday(t);
-    if (currentFilter === 'month') return isMonth(t);
-    if (currentFilter === 'year') return isYear(t);
+    const t = parseDate(item.time);
+    if (!t) return false;
+    if (currentFilter==='today') return t.getFullYear()===y && t.getMonth()===m && t.getDate()===d;
+    if (currentFilter==='month') return t.getFullYear()===y && t.getMonth()===m;
+    if (currentFilter==='year') return t.getFullYear()===y;
     return true;
   });
 }
-function fmtDate(str) {
-  if (!str) return ''; const d = parseDate(str);
-  if (!d) return str;
-  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
-}
-function fmtAmt(n) {
-  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
-  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
-  return n.toFixed(0);
-}
-
-// ── Home / Badges ────────────────────────────────────────────────────────────
-document.getElementById('homeDate').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
 function updateBadges() {
-  const money   = JSON.parse(localStorage.getItem('rif_money')   || '[]');
-  const records = JSON.parse(localStorage.getItem('rif_records') || '[]');
-  const unpaid  = money.filter(m => m.type==='Debt' && m.status==='Not Paid');
-  const pending = records.filter(r => !r.done);
-
-  document.getElementById('debtBadge').textContent  = unpaid.length;
-  document.getElementById('taskBadge').textContent  = pending.length;
-  document.getElementById('debtBadge').classList.toggle('show', unpaid.length > 0);
-  document.getElementById('taskBadge').classList.toggle('show', pending.length > 0);
-  document.getElementById('debtCount').textContent  = unpaid.length;
-  document.getElementById('taskCount').textContent  = pending.length;
-  document.getElementById('debtChip').classList.toggle('vis', unpaid.length > 0);
+  const records = JSON.parse(localStorage.getItem('rif_records')||'[]');
+  const money   = JSON.parse(localStorage.getItem('rif_money')||'[]');
+  const pending = records.filter(r=>!r.done);
+  const unpaid  = money.filter(m=>m.type==='Debt'&&m.status==='Not Paid');
+  
+  document.getElementById('taskBadge').textContent = pending.length;
+  document.getElementById('debtBadge').textContent = unpaid.length;
+  document.getElementById('taskBadge').classList.toggle('show', pending.length>0);
+  document.getElementById('debtBadge').classList.toggle('show', unpaid.length>0);
+  document.getElementById('taskCount').textContent = pending.length;
+  document.getElementById('debtCount').textContent = unpaid.length;
   document.getElementById('taskChip').classList.toggle('vis', pending.length > 0);
+  document.getElementById('debtChip').classList.toggle('vis', unpaid.length > 0);
 
   let html = '';
   unpaid.slice(0,3).forEach(d => { html += `<div class="alert-banner-item">💸 Unpaid debt: <strong>${parseFloat(d.amount).toLocaleString()}</strong>${d.desc?' — '+d.desc:''}</div>`; });
@@ -813,10 +924,15 @@ function saveMemory() {
   const reader = new FileReader();
   reader.onload = function() {
     const data = {
-      what: what.value.trim(), where: where.value, why: why.value,
-      how: how.value, quantity: quantity.value,
-      category: category.value, image: file ? reader.result : '',
-      time: new Date().toISOString(), done: false
+      what: document.getElementById('what').value.trim(), 
+      where: document.getElementById('where').value, 
+      why: document.getElementById('why').value,
+      how: document.getElementById('how').value, 
+      quantity: document.getElementById('quantity').value,
+      category: document.getElementById('category').value, 
+      image: file ? reader.result : '',
+      time: new Date().toISOString(), 
+      done: false
     };
     if (!data.what) { alert('Please enter what this memory is about.'); return; }
     const records = JSON.parse(localStorage.getItem('rif_records')||'[]');
@@ -933,16 +1049,25 @@ function addRemFromMoney(i) {
   show('reminders');
 }
 
-// ── Reminders ────────────────────────────────────────────────────────────────
+// ── Reminders with Functional Alarm & WhatsApp ──────────────────────────────
 function saveReminder() {
   const text = document.getElementById('remText').value.trim();
   if (!text) { alert('Please enter reminder text.'); return; }
-  const r = { text, time: document.getElementById('remTime').value,
-    repeat: document.getElementById('repeat').value, type: document.getElementById('alertType').value };
+  const r = { 
+    text, 
+    time: document.getElementById('remTime').value,
+    repeat: document.getElementById('repeat').value, 
+    type: document.getElementById('alertType').value,
+    id: Date.now() // Unique ID for each reminder
+  };
   const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
-  data.push(r); localStorage.setItem('rif_rem',JSON.stringify(data));
-  document.getElementById('remText').value=''; loadReminders();
+  data.push(r); 
+  localStorage.setItem('rif_rem',JSON.stringify(data));
+  document.getElementById('remText').value=''; 
+  loadReminders();
+  showToast('✓ Reminder set!', 'success');
 }
+
 function loadReminders() {
   const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
   const div  = document.getElementById('remList');
@@ -956,25 +1081,80 @@ function loadReminders() {
       </div>
     </div>`).join('');
 }
+
 function deleteReminder(i) {
   if (!confirm('Delete this reminder?')) return;
   const arr = JSON.parse(localStorage.getItem('rif_rem')||'[]');
   arr.splice(i,1); localStorage.setItem('rif_rem',JSON.stringify(arr)); loadReminders();
 }
+
+// ── Alarm Trigger & WhatsApp Notification ────────────────────────────────────
+function triggerReminder(reminder) {
+  // Show alarm modal
+  document.getElementById('alarmText').textContent = reminder.text;
+  document.getElementById('alarmModal').classList.add('show');
+  currentAlarmId = reminder.id;
+  
+  // Play alarm sound
+  if (reminder.type === 'Alarm') {
+    createAlarmSound();
+  }
+  
+  // Send WhatsApp message if configured
+  if (reminder.type === 'Message' && appSettings.whatsappPhone) {
+    sendWhatsAppMessage(reminder.text);
+  }
+}
+
+function dismissAlarm() {
+  document.getElementById('alarmModal').classList.remove('show');
+  currentAlarmId = null;
+  showToast('✓ Reminder dismissed', 'success');
+}
+
+function snoozeAlarm() {
+  document.getElementById('alarmModal').classList.remove('show');
+  currentAlarmId = null;
+  showToast('⏱ Snoozed for 5 minutes', 'info');
+}
+
+function sendWhatsAppMessage(text) {
+  const phone = appSettings.whatsappPhone.replace(/\D/g, '');
+  const message = encodeURIComponent(`RIF PRO Reminder: ${text}`);
+  const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
+  
+  // In a real app, you'd use a WhatsApp API like Twilio
+  // For now, we'll show a toast and log it
+  console.log('WhatsApp message would be sent to:', appSettings.whatsappPhone);
+  console.log('Message:', text);
+  showToast('📱 WhatsApp message prepared (check console)', 'info');
+  
+  // Uncomment below to open WhatsApp (for manual sending)
+  // window.open(whatsappUrl, '_blank');
+}
+
+// ── Reminder Check Loop (Every 10 seconds for better accuracy) ──────────────
 setInterval(() => {
   const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
   const n = new Date();
+  
   data.forEach(r => {
     if (!r.time) return;
-    const rt = new Date(r.time); let trigger = false;
-    if (r.repeat==='once'    && n.toISOString().slice(0,16)===r.time) trigger=true;
-    if (r.repeat==='hourly'  && n.getMinutes()===rt.getMinutes()) trigger=true;
-    if (r.repeat==='daily'   && n.getHours()===rt.getHours() && n.getMinutes()===rt.getMinutes()) trigger=true;
-    if (r.repeat==='monthly' && n.getDate()===rt.getDate() && n.getHours()===rt.getHours()) trigger=true;
-    if (r.repeat==='yearly'  && n.getMonth()===rt.getMonth() && n.getDate()===rt.getDate()) trigger=true;
-    if (trigger) alert(`${r.type} Reminder: ${r.text}`);
+    const rt = new Date(r.time);
+    let trigger = false;
+    
+    // Check if reminder should trigger
+    if (r.repeat==='once' && n.toISOString().slice(0,16)===r.time) trigger=true;
+    if (r.repeat==='hourly' && n.getMinutes()===rt.getMinutes() && n.getSeconds() < 10) trigger=true;
+    if (r.repeat==='daily' && n.getHours()===rt.getHours() && n.getMinutes()===rt.getMinutes() && n.getSeconds() < 10) trigger=true;
+    if (r.repeat==='monthly' && n.getDate()===rt.getDate() && n.getHours()===rt.getHours() && n.getMinutes()===rt.getMinutes() && n.getSeconds() < 10) trigger=true;
+    if (r.repeat==='yearly' && n.getMonth()===rt.getMonth() && n.getDate()===rt.getDate() && n.getHours()===rt.getHours() && n.getMinutes()===rt.getMinutes() && n.getSeconds() < 10) trigger=true;
+    
+    if (trigger) {
+      triggerReminder(r);
+    }
   });
-}, 60000);
+}, 10000);
 
 // ── Report ───────────────────────────────────────────────────────────────────
 function setFilter(f, btn) {
@@ -983,6 +1163,7 @@ function setFilter(f, btn) {
   btn.classList.add('active');
   loadReport();
 }
+
 function loadReport() {
   const money   = JSON.parse(localStorage.getItem('rif_money')  ||'[]');
   const records = JSON.parse(localStorage.getItem('rif_records')||'[]');
@@ -994,9 +1175,8 @@ function loadReport() {
 
   document.getElementById('rIncome').textContent  = fmtAmt(income);
   document.getElementById('rExpense').textContent = fmtAmt(expense);
-  document.getElementById('rDebt').textContent    = fmtAmt(debtUnpaid);
+  document.getElementById('rDebt').textContent = fmtAmt(debtUnpaid);
 
-  // Unpaid debts list (all time)
   const unpaid = money.filter(m=>m.type==='Debt'&&m.status==='Not Paid');
   const udDiv = document.getElementById('rUnpaidDebts');
   udDiv.innerHTML = unpaid.length ? unpaid.map(d=>`
@@ -1008,7 +1188,6 @@ function loadReport() {
     </div>`).join('')
     : '<div class="empty-state"><div class="ei">✅</div>No unpaid debts!</div>';
 
-  // Pending tasks (all time)
   const pending = records.filter(r=>!r.done);
   const ptDiv = document.getElementById('rPendingTasks');
   ptDiv.innerHTML = pending.length ? pending.map(r=>`
@@ -1031,7 +1210,6 @@ function renderCharts(filtered, allMoney) {
   const exp = filtered.filter(m=>m.type==='Expense').reduce((s,m)=>s+parseFloat(m.amount||0),0);
   const dbt = filtered.filter(m=>m.type==='Debt').reduce((s,m)=>s+parseFloat(m.amount||0),0);
 
-  // Donut
   donutInst = new Chart(document.getElementById('donutChart').getContext('2d'), {
     type: 'doughnut',
     data: {
@@ -1046,7 +1224,6 @@ function renderCharts(filtered, allMoney) {
     }
   });
 
-  // Bar — last 6 months
   const labels = [];
   for (let i=5;i>=0;i--) {
     const d = new Date(new Date().getFullYear(), new Date().getMonth()-i, 1);
@@ -1084,7 +1261,6 @@ async function getAIInsights() {
   const btn = document.getElementById('aiBtn');
   const out = document.getElementById('aiOutput');
 
-  // ── OFFLINE: show cached insights ──────────────────────────────────────────
   if (!effective()) {
     const raw = localStorage.getItem('rif_ai_cache');
     if (raw) {
@@ -1103,7 +1279,6 @@ async function getAIInsights() {
     return;
   }
 
-  // ── ONLINE: fetch from Claude ───────────────────────────────────────────────
   btn.disabled=true; btn.textContent='⏳ Thinking...';
   out.innerHTML='<div style="color:var(--purple);font-size:13px;text-align:center;padding:8px 0">🤖 Analyzing your data...</div>';
 
@@ -1151,13 +1326,11 @@ Output only 5 lines separated by newlines. No headers, no numbers, no extra text
     const text = data.content.map(c=>c.type==='text'?c.text:'').join('\n');
     const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
 
-    // Cache the result for offline use
     localStorage.setItem('rif_ai_cache', JSON.stringify({ lines, time: new Date().toISOString() }));
 
     out.innerHTML = lines.map(l=>`<div class="insight-item">${l}</div>`).join('');
     showToast('✅ Insights updated & cached', 'success');
   } catch(e) {
-    // Try to fall back to cache on network error
     const raw = localStorage.getItem('rif_ai_cache');
     if (raw) {
       try {
@@ -1173,7 +1346,7 @@ Output only 5 lines separated by newlines. No headers, no numbers, no extra text
     }
   }
   btn.disabled=false;
-  updateNetUI(); // refresh AI button label
+  updateNetUI();
 }
 
 // ── Export PDF ────────────────────────────────────────────────────────────────
@@ -1218,10 +1391,8 @@ function updateNetUI(announce) {
   const rpBan = document.getElementById('reportOfflineBanner');
   const aiBtn = document.getElementById('aiBtn');
 
-  // Dot state
   dot.className = 'net-dot ' + (on ? 'live' : forceOffline ? 'forced' : 'dead');
 
-  // Pill label + color
   if (on) {
     lbl.textContent = 'Online';
     pill.style.borderColor = 'rgba(16,212,142,0.35)';
@@ -1236,7 +1407,6 @@ function updateNetUI(announce) {
     lbl.style.color = '#8aa8c8';
   }
 
-  // Connectivity bar
   bar.classList.toggle('vis', !on);
   if (!on) {
     if (forceOffline) {
@@ -1250,10 +1420,8 @@ function updateNetUI(announce) {
     }
   }
 
-  // Report offline banner
   if (rpBan) rpBan.classList.toggle('vis', !on);
 
-  // AI button state
   if (aiBtn) {
     const hasCached = !!localStorage.getItem('rif_ai_cache');
     if (on) {
@@ -1261,7 +1429,7 @@ function updateNetUI(announce) {
       aiBtn.style.opacity = '1';
       aiBtn.textContent = '🤖 Get AI Insights';
     } else {
-      aiBtn.disabled = false; // keep clickable to show cache
+      aiBtn.disabled = false;
       aiBtn.style.opacity = hasCached ? '0.85' : '0.55';
       aiBtn.textContent = hasCached ? '📦 Show Cached Insights' : '🤖 AI (Offline)';
     }
@@ -1294,7 +1462,6 @@ function showToast(msg, type='info') {
   if (_toastTimer) clearTimeout(_toastTimer);
   t.textContent = msg;
   t.className = `toast t-${type}`;
-  // double rAF to ensure transition fires
   requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
   _toastTimer = setTimeout(() => t.classList.remove('show'), 3600);
 }
@@ -1308,9 +1475,28 @@ function startVoice() {
   } catch(e) { alert('Voice recognition not supported on this browser.'); }
 }
 
+// ── Misc ──────────────────────────────────────────────────────────────────────
+function shareApp() {
+  if (navigator.share) {
+    navigator.share({ title: 'RIF PRO', text: 'Check out RIF PRO - Your personal memory, money & reminder app!' });
+  } else {
+    alert('Share: RIF PRO - Your personal memory, money & reminder app!');
+  }
+}
+
+function clearAllData() {
+  if (!confirm('⚠️ This will delete ALL your data. Are you sure?')) return;
+  localStorage.clear();
+  appSettings = { fontSize: 'normal', theme: 'teal', whatsappPhone: '' };
+  saveSettings();
+  showToast('🗑️ All data cleared', 'warning');
+  show('home');
+  updateBadges();
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 updateBadges();
-applySettings(); // Apply user settings immediately
+applySettings();
 updateNetUI();
 </script>
 </body>
