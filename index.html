@@ -3,7 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>RIF PRO v3 Enhanced (Fixed)</title>
+<title>RIF APP</title>
+
+<!-- ══ PWA: Manifest ══════════════════════════════════════════════════════ -->
+<link rel="manifest" href="manifest.json">
+
+<!-- ══ PWA: Theme & Status Bar ══════════════════════════════════════════ -->
+<meta name="theme-color" content="#00c9a7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RIF APP">
+
+<!-- ══ PWA: Apple Touch Icons ════════════════════════════════════════════ -->
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+
+<!-- ══ PWA: Favicon ══════════════════════════════════════════════════════ -->
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
+
+<!-- ══ SEO Meta ══════════════════════════════════════════════════════════ -->
+<meta name="description" content="RIF APP — Your personal memory, money & reminder app. Track expenses, debts, tasks and get AI insights.">
+<meta name="application-name" content="RIF APP">
+
+<!-- ══ Fonts & External Scripts ══════════════════════════════════════════ -->
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1556,5 +1581,28 @@ updateBadges();
 applySettings();
 updateNetUI();
 </script>
+
+<!-- ══ PWA: Service Worker Registration ══════════════════════════════════════ -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/RIF-APP/sw.js', { scope: '/RIF-APP/' })
+        .then(reg => {
+          console.log('[RIF APP] Service Worker registered ✅', reg.scope);
+          reg.update();
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showToast('🔄 New version available — refresh to update!', 'info');
+              }
+            });
+          });
+        })
+        .catch(err => console.warn('[RIF APP] Service Worker registration failed:', err));
+    });
+  }
+</script>
+
 </body>
 </html>
