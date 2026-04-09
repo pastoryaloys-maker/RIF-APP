@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>RIF PRO v3 Enhanced</title>
+<title>RIF PRO v3 Enhanced (Fixed)</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1052,18 +1052,27 @@ function addRemFromMoney(i) {
 // ── Reminders with Functional Alarm & WhatsApp ──────────────────────────────
 function saveReminder() {
   const text = document.getElementById('remText').value.trim();
+  const timeVal = document.getElementById('remTime').value;
+  
   if (!text) { alert('Please enter reminder text.'); return; }
+  if (!timeVal) { alert('Please select a date and time.'); return; }
+
   const r = { 
     text, 
-    time: document.getElementById('remTime').value,
+    time: timeVal,
     repeat: document.getElementById('repeat').value, 
     type: document.getElementById('alertType').value,
-    id: Date.now() // Unique ID for each reminder
+    id: Date.now(),
+    fired: false, // Track if one-time alarm has fired
+    lastFired: 0 // Track last fired timestamp for repeating alarms
   };
+  
   const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
   data.push(r); 
   localStorage.setItem('rif_rem',JSON.stringify(data));
+  
   document.getElementById('remText').value=''; 
+  document.getElementById('remTime').value='';
   loadReminders();
   showToast('✓ Reminder set!', 'success');
 }
@@ -1089,18 +1098,18 @@ function deleteReminder(i) {
 }
 
 // ── Alarm Trigger & WhatsApp Notification ────────────────────────────────────
-function triggerReminder(reminder) {
+function triggerReminder(reminder, index) {
   // Show alarm modal
   document.getElementById('alarmText').textContent = reminder.text;
   document.getElementById('alarmModal').classList.add('show');
   currentAlarmId = reminder.id;
   
-  // Play alarm sound
+  // Play alarm sound if type is Alarm
   if (reminder.type === 'Alarm') {
     createAlarmSound();
   }
   
-  // Send WhatsApp message if configured
+  // Send WhatsApp message if configured and type is Message
   if (reminder.type === 'Message' && appSettings.whatsappPhone) {
     sendWhatsAppMessage(reminder.text);
   }
@@ -1110,10 +1119,27 @@ function dismissAlarm() {
   document.getElementById('alarmModal').classList.remove('show');
   currentAlarmId = null;
   showToast('✓ Reminder dismissed', 'success');
+  // Reload reminders to clear "fired" status if needed or keep it to prevent re-firing
+  // Note: One-time alarms marked as fired won't show again in UI if we filter them, 
+  // but currently we show all. We keep 'fired' status to prevent re-trigger.
 }
 
 function snoozeAlarm() {
   document.getElementById('alarmModal').classList.remove('show');
+  
+  // Find current reminder and push time by 5 minutes
+  const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
+  const idx = data.findIndex(r => r.id === currentAlarmId);
+  if (idx !== -1) {
+    const oldTime = new Date(data[idx].time);
+    oldTime.setMinutes(oldTime.getMinutes() + 5);
+    data[idx].time = oldTime.toISOString().slice(0, 16); // Keep format for input
+    data[idx].fired = false; // Reset fired status
+    data[idx].lastFired = 0; // Reset last fired
+    localStorage.setItem('rif_rem', JSON.stringify(data));
+    loadReminders();
+  }
+  
   currentAlarmId = null;
   showToast('⏱ Snoozed for 5 minutes', 'info');
 }
@@ -1123,38 +1149,69 @@ function sendWhatsAppMessage(text) {
   const message = encodeURIComponent(`RIF PRO Reminder: ${text}`);
   const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
   
-  // In a real app, you'd use a WhatsApp API like Twilio
-  // For now, we'll show a toast and log it
   console.log('WhatsApp message would be sent to:', appSettings.whatsappPhone);
   console.log('Message:', text);
   showToast('📱 WhatsApp message prepared (check console)', 'info');
-  
-  // Uncomment below to open WhatsApp (for manual sending)
   // window.open(whatsappUrl, '_blank');
 }
 
-// ── Reminder Check Loop (Every 10 seconds for better accuracy) ──────────────
+// ── IMPROVED Reminder Check Loop (Every 1 second) ──────────────────────
 setInterval(() => {
   const data = JSON.parse(localStorage.getItem('rif_rem')||'[]');
-  const n = new Date();
-  
-  data.forEach(r => {
+  if (!data.length) return;
+
+  const now = new Date();
+  const nowTime = now.getTime();
+  let needsSave = false;
+
+  data.forEach((r, index) => {
     if (!r.time) return;
-    const rt = new Date(r.time);
-    let trigger = false;
-    
-    // Check if reminder should trigger
-    if (r.repeat==='once' && n.toISOString().slice(0,16)===r.time) trigger=true;
-    if (r.repeat==='hourly' && n.getMinutes()===rt.getMinutes() && n.getSeconds() < 10) trigger=true;
-    if (r.repeat==='daily' && n.getHours()===rt.getHours() && n.getMinutes()===rt.getMinutes() && n.getSeconds() < 10) trigger=true;
-    if (r.repeat==='monthly' && n.getDate()===rt.getDate() && n.getHours()===rt.getHours() && n.getMinutes()===rt.getMinutes() && n.getSeconds() < 10) trigger=true;
-    if (r.repeat==='yearly' && n.getMonth()===rt.getMonth() && n.getDate()===rt.getDate() && n.getHours()===rt.getHours() && n.getMinutes()===rt.getMinutes() && n.getSeconds() < 10) trigger=true;
-    
-    if (trigger) {
-      triggerReminder(r);
+    const targetTime = new Date(r.time);
+    const targetTimeMs = targetTime.getTime();
+
+    // 1. Handle "Once" alarms
+    if (r.repeat === 'once') {
+      // Trigger if time has passed AND we haven't fired it yet
+      if (!r.fired && nowTime >= targetTimeMs) {
+        triggerReminder(r, index);
+        r.fired = true;
+        needsSave = true;
+      }
+    } 
+    // 2. Handle Repeating alarms (Hourly, Daily, Monthly, Yearly)
+    else {
+      // We check if we are currently within the trigger window
+      // Use a 30 second window around the target minute to catch the alarm
+      const isTargetHour = now.getHours() === targetTime.getHours();
+      const isTargetMin = now.getMinutes() === targetTime.getMinutes();
+      const isTargetSec = now.getSeconds() < 30; // Window: 0-29 seconds of the minute
+
+      let dateMatch = true;
+      if (r.repeat === 'daily') dateMatch = true; // Only hour/min matters
+      if (r.repeat === 'monthly') dateMatch = (now.getDate() === targetTime.getDate());
+      if (r.repeat === 'yearly') dateMatch = (now.getDate() === targetTime.getDate() && now.getMonth() === targetTime.getMonth());
+      // Hourly only cares about minute
+
+      // If we match the time criteria
+      if (isTargetHour && isTargetMin && isTargetSec && dateMatch) {
+        // Check cooldown: ensure we haven't fired this specific instance already
+        // (e.g. don't fire twice in the same minute)
+        const timeSinceLastFire = nowTime - (r.lastFired || 0);
+        const cooldownMs = 55000; // 55 seconds cooldown to prevent double firing
+
+        if (timeSinceLastFire > cooldownMs) {
+          triggerReminder(r, index);
+          r.lastFired = nowTime;
+          needsSave = true;
+        }
+      }
     }
   });
-}, 10000);
+
+  if (needsSave) {
+    localStorage.setItem('rif_rem', JSON.stringify(data));
+  }
+}, 1000); // Check every second for precision
 
 // ── Report ───────────────────────────────────────────────────────────────────
 function setFilter(f, btn) {
